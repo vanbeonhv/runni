@@ -1,0 +1,131 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider      = "prisma-client-js"
+  engineType    = "library"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id                     String             @id @default(uuid()) @db.Uuid
+  email                  String             @unique @db.VarChar(255)
+  name                   String?            @db.VarChar(255)
+  stravaAthleteId        BigInt?            @unique @map("strava_athlete_id")
+  stravaAccessToken      String?            @map("strava_access_token") @db.Text
+  stravaRefreshToken     String?            @map("strava_refresh_token") @db.Text
+  stravaTokenExpiresAt   DateTime?          @map("strava_token_expires_at")
+  createdAt              DateTime           @default(now()) @map("created_at")
+  updatedAt              DateTime           @updatedAt @map("updated_at")
+
+  trainingPlans          TrainingPlan[]
+  stravaActivities       StravaActivity[]
+
+  @@index([stravaAthleteId])
+  @@index([email])
+  @@map("users")
+}
+
+model TrainingPlan {
+  id           String    @id @default(uuid()) @db.Uuid
+  userId       String    @map("user_id") @db.Uuid
+  name         String    @db.VarChar(255)
+  raceDistance Int       @map("race_distance")
+  raceDate     DateTime  @map("race_date") @db.Date
+  startDate    DateTime  @map("start_date") @db.Date
+  totalWeeks   Int       @map("total_weeks")
+  isActive     Boolean   @default(true) @map("is_active")
+  createdAt    DateTime  @default(now()) @map("created_at")
+  updatedAt    DateTime  @updatedAt @map("updated_at")
+
+  user         User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  workouts     Workout[]
+
+  @@index([userId])
+  @@map("training_plans")
+}
+
+model Workout {
+  id               String    @id @default(uuid()) @db.Uuid
+  trainingPlanId   String    @map("training_plan_id") @db.Uuid
+  weekNumber       Int       @map("week_number")
+  scheduledDate    DateTime  @map("scheduled_date") @db.Date
+  workoutType      String    @map("workout_type") @db.VarChar(50)
+  distance         Int
+  durationEstimate Int?      @map("duration_estimate")
+  description      String?   @db.Text
+  completedAt      DateTime? @map("completed_at")
+  createdAt        DateTime  @default(now()) @map("created_at")
+  updatedAt        DateTime  @updatedAt @map("updated_at")
+
+  trainingPlan     TrainingPlan         @relation(fields: [trainingPlanId], references: [id], onDelete: Cascade)
+  completions      WorkoutCompletion[]
+
+  @@index([trainingPlanId])
+  @@map("workouts")
+}
+
+model StravaActivity {
+  id                 String    @id @default(uuid()) @db.Uuid
+  userId             String    @map("user_id") @db.Uuid
+  stravaActivityId   BigInt    @unique @map("strava_activity_id")
+  name               String?   @db.VarChar(255)
+  sportType          String    @map("sport_type") @db.VarChar(50)
+  distance           Int
+  movingTime         Int       @map("moving_time")
+  elapsedTime        Int       @map("elapsed_time")
+  averageSpeed       Decimal?  @map("average_speed") @db.Decimal(10, 2)
+  averageHeartrate   Decimal?  @map("average_heartrate") @db.Decimal(10, 2)
+  startDateLocal     DateTime  @map("start_date_local")
+  isManual           Boolean   @default(false) @map("is_manual")
+  rawData            Json?     @map("raw_data")
+  createdAt          DateTime  @default(now()) @map("created_at")
+  updatedAt          DateTime  @updatedAt @map("updated_at")
+
+  user               User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+  completions        WorkoutCompletion[]
+
+  @@index([userId])
+  @@index([stravaActivityId])
+  @@map("strava_activities")
+}
+
+model WorkoutCompletion {
+  id                   String         @id @default(uuid()) @db.Uuid
+  workoutId            String         @map("workout_id") @db.Uuid
+  stravaActivityId     String         @map("strava_activity_id") @db.Uuid
+  matchedAutomatically Boolean        @default(true) @map("matched_automatically")
+  createdAt            DateTime       @default(now()) @map("created_at")
+
+  workout              Workout        @relation(fields: [workoutId], references: [id], onDelete: Cascade)
+  stravaActivity       StravaActivity @relation(fields: [stravaActivityId], references: [id], onDelete: Cascade)
+
+  @@unique([workoutId, stravaActivityId])
+  @@index([workoutId])
+  @@index([stravaActivityId])
+  @@map("workout_completions")
+}
+
+model StravaWebhookEvent {
+  id               String    @id @default(uuid()) @db.Uuid
+  stravaAthleteId  BigInt?   @map("strava_athlete_id")
+  objectType       String    @map("object_type") @db.VarChar(50)
+  objectId         BigInt    @map("object_id")
+  aspectType       String    @map("aspect_type") @db.VarChar(50)
+  eventTime        DateTime  @map("event_time")
+  processed        Boolean   @default(false)
+  processedAt      DateTime? @map("processed_at")
+  errorMessage     String?   @map("error_message") @db.Text
+  rawPayload       Json      @map("raw_payload")
+  createdAt        DateTime  @default(now()) @map("created_at")
+
+  @@index([stravaAthleteId])
+  @@map("strava_webhook_events")
+}

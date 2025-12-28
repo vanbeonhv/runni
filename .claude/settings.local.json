@@ -1,0 +1,12 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(cat:*)",
+      "Bash(pnpm add:*)",
+      "Bash(npx prisma:*)",
+      "Bash(pnpm run build:*)",
+      "Bash(timeout 10 pnpm run start:dev:*)",
+      "Bash(timeout 15 pnpm run start:dev:*)"
+    ]
+  }
+}

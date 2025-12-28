@@ -214,7 +214,6 @@ model TrainingPlan {
   workouts     Workout[]
 
   @@index([userId])
-  @@index([isActive])
   @@map("training_plans")
 }
 
@@ -235,8 +234,6 @@ model Workout {
   completions      WorkoutCompletion[]
 
   @@index([trainingPlanId])
-  @@index([scheduledDate])
-  @@index([completedAt])
   @@map("workouts")
 }
 
@@ -261,7 +258,6 @@ model StravaActivity {
   completions        WorkoutCompletion[]
 
   @@index([userId])
-  @@index([startDateLocal])
   @@index([stravaActivityId])
   @@map("strava_activities")
 }
@@ -295,9 +291,7 @@ model StravaWebhookEvent {
   rawPayload       Json      @map("raw_payload")
   createdAt        DateTime  @default(now()) @map("created_at")
 
-  @@index([processed])
   @@index([stravaAthleteId])
-  @@index([createdAt])
   @@map("strava_webhook_events")
 }
 ```
