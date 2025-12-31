@@ -17,9 +17,10 @@ import { CurrentUser } from '../auth/decorators/current-user.decorator';
 export class WorkoutsController {
   constructor(private readonly workoutsService: WorkoutsService) {}
 
-  @Get(':id')
-  findOne(@Param('id') id: string, @CurrentUser() user: any) {
-    return this.workoutsService.findOne(id, user.userId);
+  // IMPORTANT: Specific routes must come BEFORE parameterized routes
+  @Get('today')
+  findToday(@CurrentUser() user: any) {
+    return this.workoutsService.findToday(user.userId);
   }
 
   @Get('week/:weekNumber')
@@ -30,9 +31,9 @@ export class WorkoutsController {
     return this.workoutsService.findByWeek(user.userId, weekNumber);
   }
 
-  @Get('today')
-  findToday(@CurrentUser() user: any) {
-    return this.workoutsService.findToday(user.userId);
+  @Get(':id')
+  findOne(@Param('id') id: string, @CurrentUser() user: any) {
+    return this.workoutsService.findOne(id, user.userId);
   }
 
   @Patch(':id/complete')

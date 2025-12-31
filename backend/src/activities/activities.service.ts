@@ -55,13 +55,11 @@ export class ActivitiesService {
     ]);
 
     return {
-      data: activities,
-      pagination: {
-        page,
-        limit,
-        total,
-        totalPages: Math.ceil(total / limit),
-      },
+      activities,
+      total,
+      page,
+      limit,
+      totalPages: Math.ceil(total / limit),
     };
   }
 

@@ -90,7 +90,11 @@ export class WorkoutsService {
     });
 
     if (!plan) {
-      throw new NotFoundException('No active training plan found');
+      return {
+        message: 'No active training plan found',
+        workout: null,
+        nextWorkout: null,
+      };
     }
 
     const workout = await this.prisma.workout.findFirst({
@@ -119,6 +123,7 @@ export class WorkoutsService {
 
       return {
         message: 'No workout scheduled for today',
+        workout: null,
         nextWorkout,
       };
     }

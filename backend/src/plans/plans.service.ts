@@ -66,7 +66,7 @@ export class PlansService {
     });
 
     if (!plan) {
-      throw new NotFoundException('No active training plan found');
+      return null;
     }
 
     return plan;
