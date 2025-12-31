@@ -1,12 +1,23 @@
+import { useEffect } from 'react';
 import { BookOpen } from 'lucide-react';
 import { Card, CardContent } from '../components/ui/card';
+import { useHeader } from '../contexts/HeaderContext';
 
 export function SupportPage() {
+  const { setHeaderContent } = useHeader();
+
+  useEffect(() => {
+    setHeaderContent({
+      middle: <h1 className="text-lg font-semibold">Support</h1>,
+    });
+
+    return () => {
+      setHeaderContent({});
+    };
+  }, [setHeaderContent]);
+
   return (
     <div className="min-h-screen bg-gray-50 pb-20">
-      <header className="bg-white border-b border-border px-4 py-3">
-        <h1 className="text-lg font-semibold text-center">Support</h1>
-      </header>
 
       <div className="px-4 py-12">
         <Card>

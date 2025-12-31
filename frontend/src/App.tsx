@@ -4,7 +4,9 @@ import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
 import { Toaster } from 'sonner';
 import { toast } from './lib/toast';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
+import { HeaderProvider } from './contexts/HeaderContext';
 import { BottomNav } from './components/BottomNav';
+import { TopBar } from './components/TopBar';
 import { LoginPage } from './pages/LoginPage';
 import { CallbackPage } from './pages/CallbackPage';
 import { TodayPage } from './pages/TodayPage';
@@ -57,7 +59,14 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
     return <Navigate to="/login" replace />;
   }
 
-  return <>{children}</>;
+  return (
+    <HeaderProvider>
+      <TopBar />
+      <div className="pt-[64px]">
+        {children}
+      </div>
+    </HeaderProvider>
+  );
 }
 
 function AppRoutes() {

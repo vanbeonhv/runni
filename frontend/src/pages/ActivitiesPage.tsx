@@ -1,18 +1,37 @@
 import { useQuery } from '@tanstack/react-query';
-import { Bell, Calendar, Plus } from 'lucide-react';
+import { useEffect } from 'react';
+import { Calendar, Plus } from 'lucide-react';
 import { Card, CardContent } from '../components/ui/card';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '../components/ui/tabs';
+import { useHeader } from '../contexts/HeaderContext';
 import { activitiesApi } from '../services/api';
 import type { StravaActivity } from '../types';
 import dayjs from 'dayjs';
 
 export function ActivitiesPage() {
+  const { setHeaderContent } = useHeader();
   const { data, isLoading } = useQuery({
     queryKey: ['activities', { page: 1, limit: 20 }],
     queryFn: () => activitiesApi.getActivities({ page: 1, limit: 20 }),
   });
 
   const activities = data?.activities || [];
+
+  useEffect(() => {
+    setHeaderContent({
+      middle: <h1 className="text-lg font-semibold">Activities</h1>,
+      right: (
+        <>
+          <Plus className="w-6 h-6" />
+          <Calendar className="w-6 h-6" />
+        </>
+      ),
+    });
+
+    return () => {
+      setHeaderContent({});
+    };
+  }, [setHeaderContent]);
 
   const formatPace = (speed: number) => {
     // Convert m/s to min/km
@@ -47,21 +66,6 @@ export function ActivitiesPage() {
 
   return (
     <div className="min-h-screen bg-gray-50 pb-20">
-      {/* Header */}
-      <header className="bg-white border-b border-border px-4 py-3">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-400 to-purple-500"></div>
-            <Bell className="w-6 h-6" />
-          </div>
-          <h1 className="text-lg font-semibold">Activities</h1>
-          <div className="flex items-center gap-2">
-            <Plus className="w-6 h-6" />
-            <Calendar className="w-6 h-6" />
-          </div>
-        </div>
-      </header>
-
       {/* Tabs */}
       <div className="bg-white px-4">
         <Tabs defaultValue="workouts" className="w-full">

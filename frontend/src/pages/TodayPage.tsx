@@ -1,11 +1,14 @@
 import { useQuery } from '@tanstack/react-query';
-import { Bell, Calendar } from 'lucide-react';
+import { useEffect } from 'react';
+import { Calendar } from 'lucide-react';
 import { Card, CardContent } from '../components/ui/card';
 import { Button } from '../components/ui/button';
+import { useHeader } from '../contexts/HeaderContext';
 import { workoutsApi, plansApi } from '../services/api';
 import dayjs from 'dayjs';
 
 export function TodayPage() {
+  const { setHeaderContent } = useHeader();
   const { data: todayWorkout, isLoading: workoutLoading } = useQuery({
     queryKey: ['workout', 'today'],
     queryFn: () => workoutsApi.getTodayWorkout(),
@@ -17,6 +20,28 @@ export function TodayPage() {
   });
 
   const isLoading = workoutLoading || planLoading;
+
+  useEffect(() => {
+    setHeaderContent({
+      right: (
+        <>
+          <button className="flex items-center gap-1 px-3 py-1.5 rounded-lg hover:bg-gray-100">
+            <span className="text-sm font-medium">
+              Week {activePlan ? '1' : '0'}/{activePlan?.weeks || '0'}
+            </span>
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+            </svg>
+          </button>
+          <Calendar className="w-6 h-6 text-foreground" />
+        </>
+      ),
+    });
+
+    return () => {
+      setHeaderContent({});
+    };
+  }, [setHeaderContent, activePlan]);
 
   const weekDays = ['MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT', 'SUN'];
   const today = dayjs();
@@ -66,27 +91,6 @@ export function TodayPage() {
 
   return (
     <div className="min-h-screen bg-gray-50 pb-20">
-      {/* Header */}
-      <header className="bg-white border-b border-border px-4 py-3">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-400 to-purple-500"></div>
-            <Bell className="w-6 h-6 text-foreground" />
-          </div>
-          <div className="flex items-center gap-2">
-            <button className="flex items-center gap-1 px-3 py-1.5 rounded-lg hover:bg-gray-100">
-              <span className="text-sm font-medium">
-                Week {activePlan ? '1' : '0'}/{activePlan?.weeks || '0'}
-              </span>
-              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-              </svg>
-            </button>
-            <Calendar className="w-6 h-6 text-foreground" />
-          </div>
-        </div>
-      </header>
-
       {/* Weekly Calendar */}
       {renderWeekCalendar()}
 

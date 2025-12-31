@@ -1,15 +1,29 @@
 import { useQuery } from '@tanstack/react-query';
-import { Bell, Calendar, ClipboardList, CalendarRange, Share2, Edit3 } from 'lucide-react';
+import { useEffect } from 'react';
+import { Calendar, ClipboardList, CalendarRange, Share2, Edit3 } from 'lucide-react';
 import { Card, CardContent } from '../components/ui/card';
 import { Button } from '../components/ui/button';
+import { useHeader } from '../contexts/HeaderContext';
 import { plansApi } from '../services/api';
 import dayjs from 'dayjs';
 
 export function PlanPage() {
+  const { setHeaderContent } = useHeader();
   const { data: activePlan, isLoading } = useQuery({
     queryKey: ['plan', 'active'],
     queryFn: () => plansApi.getActivePlan(),
   });
+
+  useEffect(() => {
+    setHeaderContent({
+      middle: <h1 className="text-lg font-semibold">Your Plan</h1>,
+      right: <Calendar className="w-6 h-6" />,
+    });
+
+    return () => {
+      setHeaderContent({});
+    };
+  }, [setHeaderContent]);
 
   if (isLoading) {
     return (
@@ -22,18 +36,6 @@ export function PlanPage() {
   if (!activePlan) {
     return (
       <div className="min-h-screen bg-gray-50 pb-20">
-        {/* Header */}
-        <header className="bg-white border-b border-border px-4 py-3">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-400 to-purple-500"></div>
-              <Bell className="w-6 h-6" />
-            </div>
-            <h1 className="text-lg font-semibold">Your Plan</h1>
-            <Calendar className="w-6 h-6" />
-          </div>
-        </header>
-
         <div className="px-4 py-12">
           <Card>
             <CardContent className="py-12 text-center space-y-4">
@@ -59,18 +61,6 @@ export function PlanPage() {
 
   return (
     <div className="min-h-screen bg-gray-50 pb-20">
-      {/* Header */}
-      <header className="bg-white border-b border-border px-4 py-3">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-400 to-purple-500"></div>
-            <Bell className="w-6 h-6" />
-          </div>
-          <h1 className="text-lg font-semibold">Your Plan</h1>
-          <Calendar className="w-6 h-6" />
-        </div>
-      </header>
-
       {/* Content */}
       <div className="px-4 py-6 space-y-6">
         {/* Plan Card */}
