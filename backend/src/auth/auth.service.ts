@@ -1,6 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { UsersService } from '../users/users.service';
+import { StravaService } from '../strava/strava.service';
 import { ConfigService } from '@nestjs/config';
 
 @Injectable()
@@ -9,6 +10,7 @@ export class AuthService {
 
   constructor(
     private usersService: UsersService,
+    private stravaService: StravaService,
     private jwtService: JwtService,
     private configService: ConfigService,
   ) {}
@@ -20,6 +22,9 @@ export class AuthService {
     const { athlete, accessToken, refreshToken, expiresAt } = stravaData;
 
     this.logger.log(`🏃 Processing athlete: ${athlete?.firstname} ${athlete?.lastname} (ID: ${athlete?.id})`);
+
+    // Extract avatar URL from Strava athlete data (prefer profile_medium for better performance)
+    const avatarUrl = athlete?.profile_medium || athlete?.profile || null;
 
     // Check if user already exists
     this.logger.log(`🔍 Checking if user exists with Strava ID: ${athlete.id}`);
@@ -35,6 +40,7 @@ export class AuthService {
         stravaRefreshToken: refreshToken,
         stravaTokenExpiresAt: new Date(expiresAt * 1000),
         name: `${athlete.firstname} ${athlete.lastname}`,
+        avatarUrl: avatarUrl,
       });
       this.logger.log(`✅ User updated successfully`);
     } else {
@@ -43,12 +49,31 @@ export class AuthService {
       user = await this.usersService.create({
         email: `${athlete.id}@strava.local`, // Strava doesn't provide email in OAuth
         name: `${athlete.firstname} ${athlete.lastname}`,
+        avatarUrl: avatarUrl,
         stravaAthleteId: BigInt(athlete.id),
         stravaAccessToken: accessToken,
         stravaRefreshToken: refreshToken,
         stravaTokenExpiresAt: new Date(expiresAt * 1000),
       });
       this.logger.log(`✅ New user created with ID: ${user.id}`);
+
+      // Trigger initial activity sync (fire-and-forget, non-blocking)
+      const newUserId = user.id;
+      this.logger.log(`🔄 Initiating initial activity sync for new user ${newUserId}`);
+      this.stravaService.syncInitialActivities(newUserId)
+        .then(result => {
+          this.logger.log(
+            `✅ Initial sync completed: ${result.activitiesNew} new, ` +
+            `${result.activitiesUpdated} updated`
+          );
+        })
+        .catch(error => {
+          this.logger.error(
+            `❌ Initial activity sync failed for user ${newUserId}`,
+            error.stack
+          );
+          // Error logged but doesn't block login flow
+        });
     }
 
     // Generate JWT token

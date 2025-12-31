@@ -1,4 +1,4 @@
-import { IsEmail, IsNotEmpty, IsOptional, IsString } from 'class-validator';
+import { IsEmail, IsNotEmpty, IsOptional, IsString, IsBoolean } from 'class-validator';
 
 export class CreateUserDto {
   @IsEmail()
@@ -8,6 +8,10 @@ export class CreateUserDto {
   @IsString()
   @IsOptional()
   name?: string;
+
+  @IsString()
+  @IsOptional()
+  avatarUrl?: string;
 
   @IsOptional()
   stravaAthleteId?: bigint;
@@ -22,4 +26,8 @@ export class CreateUserDto {
 
   @IsOptional()
   stravaTokenExpiresAt?: Date;
+
+  @IsOptional()
+  @IsBoolean()
+  hasCompletedInitialSync?: boolean;
 }

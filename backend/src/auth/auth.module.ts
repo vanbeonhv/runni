@@ -7,10 +7,12 @@ import { AuthController } from './auth.controller';
 import { JwtStrategy } from './strategies/jwt.strategy';
 import { StravaStrategy } from './strategies/strava.strategy';
 import { UsersModule } from '../users/users.module';
+import { StravaModule } from '../strava/strava.module';
 
 @Module({
   imports: [
     UsersModule,
+    StravaModule,
     PassportModule,
     JwtModule.registerAsync({
       imports: [ConfigModule],

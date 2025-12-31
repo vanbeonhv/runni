@@ -2,6 +2,7 @@ import { Injectable, UnauthorizedException, NotFoundException } from '@nestjs/co
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../prisma/prisma.service';
 import axios from 'axios';
+import { STRAVA_CONSTANTS } from './strava.constants';
 
 @Injectable()
 export class StravaService {
@@ -158,6 +159,108 @@ export class StravaService {
       activitiesNew,
       activitiesUpdated,
     };
+  }
+
+  /**
+   * Syncs the most recent N activities for a new user during initial onboarding.
+   * Fetches activities without time filters, using only count limit.
+   *
+   * @param userId - The user ID to sync activities for
+   * @param count - Number of activities to fetch (default: 10)
+   * @returns Summary of sync operation
+   */
+  async syncInitialActivities(
+    userId: string,
+    count: number = STRAVA_CONSTANTS.INITIAL_ACTIVITY_SYNC_COUNT,
+  ) {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+    });
+
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+
+    // Skip if already synced
+    if (user.hasCompletedInitialSync) {
+      return {
+        message: 'Initial sync already completed',
+        activitiesFound: 0,
+        activitiesNew: 0,
+        activitiesUpdated: 0,
+        skipped: true,
+      };
+    }
+
+    try {
+      // Fetch activities without time filters
+      const stravaActivities = await this.getAthleteActivities(
+        userId,
+        undefined, // no 'after' filter
+        undefined, // no 'before' filter
+        1,         // page 1
+        count      // fetch exactly N activities
+      );
+
+      let activitiesNew = 0;
+      let activitiesUpdated = 0;
+
+      // Process each activity
+      for (const activity of stravaActivities) {
+        const existing = await this.prisma.stravaActivity.findUnique({
+          where: { stravaActivityId: BigInt(activity.id) },
+        });
+
+        const activityData = {
+          userId,
+          stravaActivityId: BigInt(activity.id),
+          name: activity.name,
+          sportType: activity.sport_type || activity.type,
+          distance: Math.round(activity.distance),
+          movingTime: activity.moving_time,
+          elapsedTime: activity.elapsed_time,
+          averageSpeed: activity.average_speed,
+          averageHeartrate: activity.average_heartrate,
+          startDateLocal: new Date(activity.start_date_local),
+          isManual: activity.manual || false,
+          rawData: activity,
+        };
+
+        if (existing) {
+          await this.prisma.stravaActivity.update({
+            where: { id: existing.id },
+            data: activityData,
+          });
+          activitiesUpdated++;
+        } else {
+          await this.prisma.stravaActivity.create({
+            data: activityData,
+          });
+          activitiesNew++;
+
+          // Note: Skip auto-matching during initial sync
+          // Auto-matching only applies to ongoing training plans
+        }
+      }
+
+      // Mark sync as completed
+      await this.prisma.user.update({
+        where: { id: userId },
+        data: { hasCompletedInitialSync: true },
+      });
+
+      return {
+        message: 'Initial activity sync completed',
+        activitiesFound: stravaActivities.length,
+        activitiesNew,
+        activitiesUpdated,
+        skipped: false,
+      };
+    } catch (error) {
+      // Don't update hasCompletedInitialSync on failure
+      // Allows retry on next login or manual trigger
+      throw error;
+    }
   }
 
   private async autoMatchActivity(userId: string, activity: any) {
