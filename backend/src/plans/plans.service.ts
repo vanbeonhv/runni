@@ -1,11 +1,21 @@
-import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException, Logger } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { ActivitiesService } from '../activities/activities.service';
 import { CreatePlanDto } from './dto/create-plan.dto';
 import { UpdatePlanDto } from './dto/update-plan.dto';
+import { VDOTCalculator } from './utils/vdot-calculator';
+import { PaceCalculator, TrainingPaces } from './utils/pace-calculator';
+import { ActivityAnalyzer } from './utils/activity-analyzer';
+import { WorkoutGenerator } from './utils/workout-generator';
 
 @Injectable()
 export class PlansService {
-  constructor(private prisma: PrismaService) {}
+  private readonly logger = new Logger(PlansService.name);
+
+  constructor(
+    private prisma: PrismaService,
+    private activitiesService: ActivitiesService,
+  ) {}
 
   async create(userId: string, createPlanDto: CreatePlanDto) {
     const raceDate = new Date(createPlanDto.raceDate);
@@ -20,6 +30,46 @@ export class PlansService {
     const startDate = new Date(raceDate);
     startDate.setDate(startDate.getDate() - totalWeeks * 7);
 
+    // ==========================================
+    // VDOT Calculation (Priority-based)
+    // ==========================================
+    let vdot: number;
+    let vdotSource: string;
+
+    if (createPlanDto.manualVDOT) {
+      // Priority 1: Manual VDOT override
+      vdot = createPlanDto.manualVDOT;
+      vdotSource = 'manual';
+      this.logger.log(`Using manual VDOT: ${vdot}`);
+    } else if (createPlanDto.recentRaceDistance && createPlanDto.recentRaceTime) {
+      // Priority 2: Calculate from recent race performance
+      vdot = VDOTCalculator.calculateFromRace({
+        distanceMeters: createPlanDto.recentRaceDistance,
+        timeSeconds: createPlanDto.recentRaceTime,
+      });
+      vdotSource = 'race';
+      this.logger.log(`Calculated VDOT from race: ${vdot} (${createPlanDto.recentRaceDistance}m in ${createPlanDto.recentRaceTime}s)`);
+    } else {
+      // Priority 3: Estimate from recent activities
+      const recentActivities = await this.activitiesService.findRecentForVDOT(userId, 6);
+      const analysis = ActivityAnalyzer.analyzeRecentActivities(recentActivities);
+      vdot = analysis.vdot;
+      vdotSource = 'activities';
+      this.logger.log(
+        `Estimated VDOT from ${analysis.activityCount} activities: ${vdot} ` +
+        `(avg pace: ${Math.round(analysis.averagePace)}s/km, weekly: ${Math.round(analysis.weeklyVolume / 1000)}km)`
+      );
+    }
+
+    // Calculate training paces from VDOT
+    const paces = PaceCalculator.calculateTrainingPaces(vdot);
+    this.logger.log(
+      `Training paces - Easy: ${PaceCalculator.formatPace((paces.easy.min + paces.easy.max) / 2)}/km, ` +
+      `Marathon: ${PaceCalculator.formatPace(paces.marathon)}/km, ` +
+      `Threshold: ${PaceCalculator.formatPace(paces.threshold)}/km, ` +
+      `Interval: ${PaceCalculator.formatPace(paces.interval)}/km`
+    );
+
     // Deactivate any existing active plans
     await this.prisma.trainingPlan.updateMany({
       where: {
@@ -31,7 +81,7 @@ export class PlansService {
       },
     });
 
-    // Create new plan
+    // Create new plan with VDOT and training paces
     const plan = await this.prisma.trainingPlan.create({
       data: {
         userId,
@@ -41,11 +91,29 @@ export class PlansService {
         startDate,
         totalWeeks,
         isActive: true,
+        // VDOT and training paces
+        vdot,
+        easePaceMin: paces.easy.min,
+        easePaceMax: paces.easy.max,
+        marathonPace: paces.marathon,
+        thresholdPace: paces.threshold,
+        intervalPace: paces.interval,
+        repetitionPace: paces.repetition,
       },
     });
 
-    // Generate workouts for the plan
-    await this.generateWorkouts(plan.id, startDate, totalWeeks, createPlanDto.raceDistance);
+    // Generate workouts with VDOT-based paces and periodization
+    const sessionsPerWeek = createPlanDto.trainingIntensity || 4;
+    await this.generateWorkouts(
+      plan.id,
+      startDate,
+      totalWeeks,
+      createPlanDto.raceDistance,
+      paces,
+      sessionsPerWeek,
+    );
+
+    this.logger.log(`Created training plan ${plan.id} for user ${userId} with VDOT ${vdot} (source: ${vdotSource})`);
 
     return plan;
   }
@@ -158,64 +226,56 @@ export class PlansService {
     startDate: Date,
     totalWeeks: number,
     raceDistance: number,
+    paces: TrainingPaces,
+    sessionsPerWeek: number = 4,
   ) {
     const workouts: any[] = [];
-    const workoutTypes = ['Easy', 'Long', 'Intervals', 'Tempo', 'Recovery'];
+
+    // Default day distribution based on sessions per week
+    // This distributes workouts throughout the week
+    const dayDistributions: Record<number, number[]> = {
+      3: [0, 3, 6],          // Mon, Thu, Sun
+      4: [0, 2, 4, 6],       // Mon, Wed, Fri, Sun
+      5: [0, 2, 3, 5, 6],    // Mon, Wed, Thu, Sat, Sun
+      6: [0, 1, 2, 4, 5, 6], // Mon, Tue, Wed, Fri, Sat, Sun
+    };
+
+    const daysInWeek = dayDistributions[sessionsPerWeek] || dayDistributions[4];
 
     for (let week = 1; week <= totalWeeks; week++) {
-      // 3 workouts per week
-      const daysInWeek = [1, 3, 6]; // Monday, Wednesday, Saturday
+      // Generate workouts for this week using WorkoutGenerator
+      const generatedWorkouts = WorkoutGenerator.generateWeek(
+        week,
+        totalWeeks,
+        raceDistance,
+        paces,
+        sessionsPerWeek,
+      );
 
-      for (let i = 0; i < daysInWeek.length; i++) {
+      // Schedule workouts on specific days
+      generatedWorkouts.forEach((workout, index) => {
         const scheduledDate = new Date(startDate);
-        scheduledDate.setDate(scheduledDate.getDate() + (week - 1) * 7 + daysInWeek[i]);
-
-        const workoutType = i === 2 ? 'Long' : workoutTypes[i % workoutTypes.length];
-        const distance = this.calculateWorkoutDistance(week, totalWeeks, raceDistance, workoutType);
+        scheduledDate.setDate(
+          scheduledDate.getDate() + (week - 1) * 7 + daysInWeek[index]
+        );
 
         workouts.push({
           trainingPlanId: planId,
           weekNumber: week,
           scheduledDate,
-          workoutType,
-          distance,
-          durationEstimate: Math.round((distance / 1000) * 6), // ~6 min/km pace estimate
-          description: this.getWorkoutDescription(workoutType, distance),
+          workoutType: workout.workoutType,
+          distance: workout.distance,
+          durationEstimate: workout.durationEstimate,
+          description: workout.description,
+          targetPace: workout.targetPace,
+          paceZone: workout.paceZone,
+          structure: workout.structure,
         });
-      }
+      });
     }
 
     await this.prisma.workout.createMany({ data: workouts });
+    this.logger.log(`Generated ${workouts.length} workouts for plan ${planId} (${sessionsPerWeek} sessions/week)`);
   }
 
-  private calculateWorkoutDistance(
-    week: number,
-    totalWeeks: number,
-    raceDistance: number,
-    workoutType: string,
-  ): number {
-    const progressFactor = week / totalWeeks;
-
-    if (workoutType === 'Long') {
-      return Math.round(raceDistance * 0.5 * (0.5 + progressFactor * 0.5));
-    } else if (workoutType === 'Tempo') {
-      return Math.round(raceDistance * 0.3);
-    } else if (workoutType === 'Intervals') {
-      return Math.round(raceDistance * 0.25);
-    } else {
-      return Math.round(raceDistance * 0.3);
-    }
-  }
-
-  private getWorkoutDescription(workoutType: string, distance: number): string {
-    const km = (distance / 1000).toFixed(1);
-    const descriptions: Record<string, string> = {
-      Easy: `Easy pace run - ${km}km at comfortable pace`,
-      Long: `Long run - ${km}km at steady pace`,
-      Intervals: `Interval training - ${km}km with speed intervals`,
-      Tempo: `Tempo run - ${km}km at threshold pace`,
-      Recovery: `Recovery run - ${km}km easy pace`,
-    };
-    return descriptions[workoutType] || `${workoutType} - ${km}km`;
-  }
 }

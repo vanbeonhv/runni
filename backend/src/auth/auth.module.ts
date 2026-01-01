@@ -16,12 +16,15 @@ import { StravaModule } from '../strava/strava.module';
     PassportModule,
     JwtModule.registerAsync({
       imports: [ConfigModule],
-      useFactory: (configService: ConfigService) => ({
-        secret: configService.get<string>('JWT_SECRET') || 'default-secret-change-me',
-        signOptions: {
-          expiresIn: '1h',
-        },
-      }),
+      useFactory: (configService: ConfigService) => {
+        const expiresIn = configService.get<string>('JWT_EXPIRES_IN') || '90d';
+        return {
+          secret: configService.get<string>('JWT_SECRET') || 'default-secret-change-me',
+          signOptions: {
+            expiresIn: expiresIn as any, // Type assertion needed for StringValue type from ms package
+          },
+        };
+      },
       inject: [ConfigService],
     }),
   ],

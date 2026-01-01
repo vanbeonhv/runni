@@ -91,4 +91,24 @@ export class ActivitiesService {
 
     return activity;
   }
+
+  /**
+   * Find recent running activities for VDOT calculation
+   * @param userId - User ID
+   * @param weeks - Number of weeks to look back (default: 6)
+   * @returns Recent running activities
+   */
+  async findRecentForVDOT(userId: string, weeks: number = 6) {
+    const startDate = new Date();
+    startDate.setDate(startDate.getDate() - weeks * 7);
+
+    return this.prisma.stravaActivity.findMany({
+      where: {
+        userId,
+        sportType: 'Run',
+        startDateLocal: { gte: startDate },
+      },
+      orderBy: { startDateLocal: 'desc' },
+    });
+  }
 }

@@ -90,6 +90,33 @@ export class AuthService {
     return this.usersService.findOne(userId);
   }
 
+  /**
+   * Parse JWT expiration string (e.g., '90d', '30d', '1h') to seconds
+   */
+  private parseExpiresIn(expiresIn: string): number {
+    const match = expiresIn.match(/^(\d+)([smhd])$/);
+    if (!match) {
+      // Default to 90 days if format is invalid
+      return 90 * 24 * 60 * 60;
+    }
+
+    const value = parseInt(match[1], 10);
+    const unit = match[2];
+
+    switch (unit) {
+      case 's':
+        return value;
+      case 'm':
+        return value * 60;
+      case 'h':
+        return value * 60 * 60;
+      case 'd':
+        return value * 24 * 60 * 60;
+      default:
+        return 90 * 24 * 60 * 60; // Default to 90 days
+    }
+  }
+
   async refreshToken(refreshToken: string) {
     try {
       const payload = this.jwtService.verify(refreshToken);
@@ -98,9 +125,13 @@ export class AuthService {
       const newPayload = { email: user.email, sub: user.id };
       const accessToken = this.jwtService.sign(newPayload);
 
+      // Parse expiresIn from config (e.g., '90d' -> 90 days in seconds)
+      const expiresInConfig = this.configService.get<string>('JWT_EXPIRES_IN') || '90d';
+      const expiresInSeconds = this.parseExpiresIn(expiresInConfig);
+
       return {
         accessToken,
-        expiresIn: this.configService.get<number>('JWT_EXPIRES_IN') || 3600,
+        expiresIn: expiresInSeconds,
       };
     } catch (error) {
       throw new Error('Invalid refresh token');

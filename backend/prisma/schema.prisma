@@ -42,10 +42,18 @@ model TrainingPlan {
   raceDistance Int       @map("race_distance")
   raceDate     DateTime  @map("race_date") @db.Date
   startDate    DateTime  @map("start_date") @db.Date
-  totalWeeks   Int       @map("total_weeks")
-  isActive     Boolean   @default(true) @map("is_active")
-  createdAt    DateTime  @default(now()) @map("created_at")
-  updatedAt    DateTime  @updatedAt @map("updated_at")
+  totalWeeks        Int       @map("total_weeks")
+  isActive          Boolean   @default(true) @map("is_active")
+  vdot              Decimal?  @db.Decimal(4, 1)
+  easePaceMin       Int?      @map("ease_pace_min")
+  easePaceMax       Int?      @map("ease_pace_max")
+  marathonPace      Int?      @map("marathon_pace")
+  thresholdPace     Int?      @map("threshold_pace")
+  intervalPace      Int?      @map("interval_pace")
+  repetitionPace    Int?      @map("repetition_pace")
+  weeklyMileage     Json?     @map("weekly_mileage")
+  createdAt         DateTime  @default(now()) @map("created_at")
+  updatedAt         DateTime  @updatedAt @map("updated_at")
 
   user         User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   workouts     Workout[]
@@ -63,6 +71,9 @@ model Workout {
   distance         Int
   durationEstimate Int?      @map("duration_estimate")
   description      String?   @db.Text
+  targetPace       Int?      @map("target_pace")
+  paceZone         String?   @map("pace_zone") @db.VarChar(20)
+  structure        Json?
   completedAt      DateTime? @map("completed_at")
   createdAt        DateTime  @default(now()) @map("created_at")
   updatedAt        DateTime  @updatedAt @map("updated_at")
