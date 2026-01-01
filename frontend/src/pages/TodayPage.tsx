@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Calendar } from 'lucide-react';
 import { Card, CardContent } from '../components/ui/card';
 import { Button } from '../components/ui/button';
@@ -8,6 +9,7 @@ import { workoutsApi, plansApi } from '../services/api';
 import dayjs from 'dayjs';
 
 export function TodayPage() {
+  const navigate = useNavigate();
   const { setHeaderContent } = useHeader();
   const { data: todayWorkout, isLoading: workoutLoading } = useQuery({
     queryKey: ['workout', 'today'],
@@ -104,7 +106,7 @@ export function TodayPage() {
               <p className="text-muted-foreground mb-4">
                 No active training plan yet
               </p>
-              <Button onClick={() => window.location.href = '/plan'}>
+              <Button onClick={() => navigate('/plan/create')}>
                 Create Your First Plan
               </Button>
             </CardContent>

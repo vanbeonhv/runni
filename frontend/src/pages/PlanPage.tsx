@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Calendar, ClipboardList, CalendarRange, Share2, Edit3 } from 'lucide-react';
 import { Card, CardContent } from '../components/ui/card';
 import { Button } from '../components/ui/button';
@@ -8,6 +9,7 @@ import { plansApi } from '../services/api';
 import dayjs from 'dayjs';
 
 export function PlanPage() {
+  const navigate = useNavigate();
   const { setHeaderContent } = useHeader();
   const { data: activePlan, isLoading } = useQuery({
     queryKey: ['plan', 'active'],
@@ -46,7 +48,7 @@ export function PlanPage() {
                   Create your first training plan to get started
                 </p>
               </div>
-              <Button size="lg" className="px-8">
+              <Button size="lg" className="px-8" onClick={() => navigate('/plan/create')}>
                 Create Plan
               </Button>
             </CardContent>

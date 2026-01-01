@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Token - Runni</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+            margin-bottom: 20px;
+        }
+        textarea {
+            width: 100%;
+            min-height: 100px;
+            padding: 10px;
+            border: 2px solid #ddd;
+            border-radius: 4px;
+            font-family: monospace;
+            font-size: 12px;
+            margin: 10px 0;
+        }
+        button {
+            background: #FC4C02;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+            margin: 10px 5px 10px 0;
+        }
+        button:hover {
+            background: #E34402;
+        }
+        button.secondary {
+            background: #6c757d;
+        }
+        button.secondary:hover {
+            background: #5a6268;
+        }
+        .result {
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 4px;
+            font-family: monospace;
+            font-size: 12px;
+            white-space: pre-wrap;
+            word-break: break-all;
+        }
+        .success {
+            background: #d4edda;
+            border: 1px solid #c3e6cb;
+            color: #155724;
+        }
+        .error {
+            background: #f8d7da;
+            border: 1px solid #f5c6cb;
+            color: #721c24;
+        }
+        .info {
+            background: #d1ecf1;
+            border: 1px solid #bee5eb;
+            color: #0c5460;
+        }
+        .steps {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 4px;
+            margin-bottom: 20px;
+        }
+        .steps ol {
+            margin: 10px 0;
+            padding-left: 20px;
+        }
+        .steps li {
+            margin: 5px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔑 Test Token - Runni</h1>
+        
+        <div class="steps">
+            <h3>Hướng dẫn:</h3>
+            <ol>
+                <li>Copy token từ browser đã đăng nhập (F12 → Console → <code>localStorage.getItem('authToken')</code>)</li>
+                <li>Dán token vào ô bên dưới</li>
+                <li>Click "Test Token" để kiểm tra token có hợp lệ không</li>
+                <li>Nếu token hợp lệ, click "Set Token" để lưu vào localStorage</li>
+                <li>Refresh trang app để đăng nhập</li>
+            </ol>
+        </div>
+
+        <div>
+            <label for="tokenInput"><strong>Token:</strong></label>
+            <textarea id="tokenInput" placeholder="Paste your JWT token here..."></textarea>
+        </div>
+
+        <div>
+            <button onclick="testToken()">Test Token</button>
+            <button onclick="setToken()" class="secondary">Set Token to localStorage</button>
+            <button onclick="getCurrentToken()" class="secondary">Get Current Token</button>
+            <button onclick="clearToken()" class="secondary">Clear Token</button>
+        </div>
+
+        <div id="result"></div>
+    </div>
+
+    <script>
+        const API_BASE_URL = 'http://localhost:3000'; // Change if needed
+
+        async function testToken() {
+            const token = document.getElementById('tokenInput').value.trim();
+            const resultDiv = document.getElementById('result');
+
+            if (!token) {
+                resultDiv.className = 'result error';
+                resultDiv.textContent = '❌ Please enter a token';
+                return;
+            }
+
+            resultDiv.className = 'result info';
+            resultDiv.textContent = '🔄 Testing token...';
+
+            try {
+                const response = await fetch(`${API_BASE_URL}/auth/me`, {
+                    method: 'GET',
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json',
+                    },
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    resultDiv.className = 'result success';
+                    resultDiv.textContent = `✅ Token is VALID!\n\nUser Info:\n${JSON.stringify(data, null, 2)}\n\nToken (first 50 chars): ${token.substring(0, 50)}...`;
+                } else {
+                    resultDiv.className = 'result error';
+                    resultDiv.textContent = `❌ Token is INVALID!\n\nStatus: ${response.status}\nError: ${JSON.stringify(data, null, 2)}\n\nPossible reasons:\n- Token expired\n- Token format incorrect\n- Wrong JWT_SECRET\n- User not found in database`;
+                }
+            } catch (error) {
+                resultDiv.className = 'result error';
+                resultDiv.textContent = `❌ Error testing token:\n\n${error.message}\n\nPossible reasons:\n- Backend not running\n- CORS issue\n- Network error\n\nMake sure backend is running at ${API_BASE_URL}`;
+            }
+        }
+
+        function setToken() {
+            const token = document.getElementById('tokenInput').value.trim();
+            const resultDiv = document.getElementById('result');
+
+            if (!token) {
+                resultDiv.className = 'result error';
+                resultDiv.textContent = '❌ Please enter a token first';
+                return;
+            }
+
+            try {
+                localStorage.setItem('authToken', token);
+                resultDiv.className = 'result success';
+                resultDiv.textContent = `✅ Token saved to localStorage!\n\nNow refresh your app page to login.\n\nToken (first 50 chars): ${token.substring(0, 50)}...`;
+            } catch (error) {
+                resultDiv.className = 'result error';
+                resultDiv.textContent = `❌ Error saving token: ${error.message}`;
+            }
+        }
+
+        function getCurrentToken() {
+            const token = localStorage.getItem('authToken');
+            const resultDiv = document.getElementById('result');
+
+            if (token) {
+                document.getElementById('tokenInput').value = token;
+                resultDiv.className = 'result info';
+                resultDiv.textContent = `ℹ️ Current token loaded from localStorage\n\nToken (first 50 chars): ${token.substring(0, 50)}...\n\nFull token length: ${token.length} characters`;
+            } else {
+                resultDiv.className = 'result info';
+                resultDiv.textContent = 'ℹ️ No token found in localStorage';
+            }
+        }
+
+        function clearToken() {
+            localStorage.removeItem('authToken');
+            document.getElementById('tokenInput').value = '';
+            const resultDiv = document.getElementById('result');
+            resultDiv.className = 'result info';
+            resultDiv.textContent = 'ℹ️ Token cleared from localStorage';
+        }
+
+        // Auto-load current token on page load
+        window.onload = function() {
+            const token = localStorage.getItem('authToken');
+            if (token) {
+                document.getElementById('tokenInput').value = token;
+            }
+        };
+    </script>
+</body>
+</html>
+

@@ -33,8 +33,19 @@ api.interceptors.response.use(
   (error) => {
     if (error.response?.status === 401) {
       // Token expired or invalid
-      localStorage.removeItem('authToken');
-      window.location.href = '/login';
+      console.error('🚫 401 Unauthorized - Token invalid or expired');
+      console.error('Error details:', {
+        url: error.config?.url,
+        status: error.response?.status,
+        message: error.response?.data?.message || error.message,
+      });
+      
+      // Only redirect if we're not already on login page and not during initial auth check
+      const currentPath = window.location.pathname;
+      if (currentPath !== '/login' && currentPath !== '/auth/callback') {
+        localStorage.removeItem('authToken');
+        window.location.href = '/login';
+      }
     }
     return Promise.reject(error);
   }
@@ -82,7 +93,13 @@ export const plansApi = {
     name: string;
     raceDistance: number;
     raceDate: string;
-    startDate: string;
+    manualVDOT?: number;
+    recentRaceDistance?: number;
+    recentRaceTime?: number;
+    trainingIntensity?: number;
+    longRunsPerWeek?: number;
+    availableDays?: string[];
+    currentWeeklyMileage?: number;
   }): Promise<TrainingPlan> => {
     const { data } = await api.post('/api/plans', plan);
     return data;

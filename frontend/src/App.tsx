@@ -11,6 +11,7 @@ import { LoginPage } from './pages/LoginPage';
 import { CallbackPage } from './pages/CallbackPage';
 import { TodayPage } from './pages/TodayPage';
 import { PlanPage } from './pages/PlanPage';
+import { CreatePlanPage } from './pages/CreatePlanPage';
 import { ActivitiesPage } from './pages/ActivitiesPage';
 import { CommunityPage } from './pages/CommunityPage';
 import { SupportPage } from './pages/SupportPage';
@@ -93,6 +94,15 @@ function AppRoutes() {
           <ProtectedRoute>
             <PlanPage />
             <BottomNav />
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/plan/create"
+        element={
+          <ProtectedRoute>
+            <CreatePlanPage />
           </ProtectedRoute>
         }
       />

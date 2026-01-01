@@ -52,7 +52,7 @@ export interface StravaActivity {
   elapsedTime: number;
   totalElevationGain: number;
   sportType: string;
-  startDate: Date;
+  startDateLocal: Date;
   timezone: string;
   averageSpeed?: number;
   maxSpeed?: number;

@@ -22,12 +22,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const token = localStorage.getItem('authToken');
       if (token) {
         try {
+          console.log('🔍 Validating token...', token.substring(0, 20) + '...');
           const userData = await authApi.getCurrentUser();
+          console.log('✅ Token valid, user loaded:', userData);
           setUser(userData);
-        } catch (error) {
-          console.error('Failed to fetch user:', error);
+        } catch (error: any) {
+          console.error('❌ Failed to fetch user:', error);
+          console.error('Error details:', {
+            status: error?.response?.status,
+            message: error?.response?.data?.message || error?.message,
+            token: token?.substring(0, 20) + '...',
+          });
           localStorage.removeItem('authToken');
         }
+      } else {
+        console.log('ℹ️ No token found in localStorage');
       }
       setIsLoading(false);
     };

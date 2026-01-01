@@ -7,6 +7,9 @@ import { useHeader } from '../contexts/HeaderContext';
 import { activitiesApi } from '../services/api';
 import type { StravaActivity } from '../types';
 import dayjs from 'dayjs';
+import customParseFormat from 'dayjs/plugin/customParseFormat';
+
+dayjs.extend(customParseFormat);
 
 export function ActivitiesPage() {
   const { setHeaderContent } = useHeader();
@@ -47,8 +50,30 @@ export function ActivitiesPage() {
     return `${minutes}:${secs.toString().padStart(2, '0')}`;
   };
 
+  // Parse date string as local time without timezone conversion
+  // Date from DB is already in local time, so we parse it directly without converting
+  const parseLocalDate = (date: string | Date) => {
+    if (typeof date === 'string') {
+      // Remove timezone info (Z or +HH:MM/-HH:MM) if present to parse as local time
+      // This ensures the date is parsed as-is without timezone conversion
+      const dateStr = date.replace(/[Zz]$|[+-]\d{2}:?\d{2}$/, '');
+      // Parse as local time (no timezone conversion)
+      return dayjs(dateStr);
+    }
+    // If it's already a Date object, extract local time components and create dayjs
+    const d = date as Date;
+    return dayjs()
+      .year(d.getFullYear())
+      .month(d.getMonth())
+      .date(d.getDate())
+      .hour(d.getHours())
+      .minute(d.getMinutes())
+      .second(d.getSeconds())
+      .millisecond(d.getMilliseconds());
+  };
+
   const groupedActivities = activities.reduce((acc, activity) => {
-    const month = dayjs(activity.startDate).format('MMMM YYYY');
+    const month = parseLocalDate(activity.startDateLocal).format('MMMM YYYY');
     if (!acc[month]) {
       acc[month] = [];
     }
@@ -148,7 +173,7 @@ export function ActivitiesPage() {
                         <div className="flex items-start justify-between mb-3">
                           <div className="flex-1">
                             <p className="text-sm text-muted-foreground mb-1">
-                              {dayjs(activity.startDate).format('MMM D, YYYY · HH:mm')}
+                              {parseLocalDate(activity.startDateLocal).format('MMM D, YYYY · HH:mm')}
                             </p>
                             <h3 className="text-lg font-bold">{activity.name}</h3>
                           </div>
