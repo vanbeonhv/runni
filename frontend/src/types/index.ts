@@ -27,16 +27,17 @@ export interface TrainingPlan {
 
 export interface Workout {
   id: string;
-  planId: string;
+  trainingPlanId: string;
   weekNumber: number;
-  dayOfWeek: number;
-  date: Date;
-  type: 'EASY' | 'TEMPO' | 'LONG' | 'INTERVALS' | 'RECOVERY';
+  scheduledDate: Date;
+  workoutType: string;
   distance: number;
-  duration?: number;
+  durationEstimate?: number;
   description?: string;
-  isCompleted: boolean;
-  completedAt?: Date;
+  targetPace?: number;
+  paceZone?: string;
+  structure?: any;
+  completedAt?: Date | null;
   createdAt: Date;
   updatedAt: Date;
   completion?: WorkoutCompletion;

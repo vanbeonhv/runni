@@ -5,7 +5,7 @@ import { Calendar } from 'lucide-react';
 import { Card, CardContent } from '../components/ui/card';
 import { Button } from '../components/ui/button';
 import { useHeader } from '../contexts/HeaderContext';
-import { workoutsApi, plansApi } from '../services/api';
+import { workoutsApi, plansApi, isWorkoutCompleted } from '../services/api';
 import dayjs from 'dayjs';
 
 export function TodayPage() {
@@ -120,19 +120,19 @@ export function TodayPage() {
                 <div className="flex items-start justify-between mb-3">
                   <div className="flex-1">
                     <p className="text-sm text-muted-foreground mb-1">
-                      {dayjs(todayWorkout.date).format('dddd, MMM D')} · 40m - 45m
+                      {dayjs(todayWorkout.scheduledDate).format('dddd, MMM D')} · {todayWorkout.durationEstimate ? `${Math.round(todayWorkout.durationEstimate / 60)}m` : 'N/A'}
                     </p>
                     <h3 className="text-lg font-bold">
-                      {todayWorkout.distance}km {todayWorkout.type.charAt(0) + todayWorkout.type.slice(1).toLowerCase()} Run
+                      {todayWorkout.distance / 1000}km {todayWorkout.workoutType.charAt(0) + todayWorkout.workoutType.slice(1).toLowerCase()} Run
                     </h3>
                     <p className="text-sm text-muted-foreground mt-1">
-                      {todayWorkout.type.charAt(0) + todayWorkout.type.slice(1).toLowerCase()} Run · {todayWorkout.distance}km
+                      {todayWorkout.workoutType.charAt(0) + todayWorkout.workoutType.slice(1).toLowerCase()} Run · {todayWorkout.distance / 1000}km
                     </p>
                   </div>
                   <div className="flex flex-col items-end gap-2">
                     <input
                       type="checkbox"
-                      checked={todayWorkout.isCompleted}
+                      checked={isWorkoutCompleted(todayWorkout)}
                       className="w-5 h-5 rounded border-2 border-gray-300"
                       readOnly
                     />

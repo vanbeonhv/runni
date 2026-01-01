@@ -1,0 +1,21 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "Launch NestJS App (start:dev)",
+      "cwd": "${workspaceFolder}/backend",
+      "runtimeExecutable": "pnpm",
+      "runtimeArgs": [
+        "start:dev"
+      ],
+      "envFile": "${workspaceFolder}/backend/.env",
+      "skipFiles": [
+        "/**"
+      ],
+      "console": "integratedTerminal",
+      "restart": true
+    }
+  ]
+}

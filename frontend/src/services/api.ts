@@ -86,7 +86,9 @@ export const plansApi = {
     params?: { weekNumber?: number; date?: string }
   ): Promise<Workout[]> => {
     const { data } = await api.get(`/api/plans/${id}/workouts`, { params });
-    return data;
+    // Handle both array and object with data property
+    const workouts = Array.isArray(data) ? data : (data?.data || []);
+    return workouts.map((w: any) => normalizeWorkout(w)).filter((w: Workout | null): w is Workout => w !== null);
   },
 
   createPlan: async (plan: {
@@ -115,17 +117,25 @@ export const plansApi = {
 export const workoutsApi = {
   getWorkoutById: async (id: string): Promise<Workout> => {
     const { data } = await api.get(`/api/workouts/${id}`);
-    return data;
+    return normalizeWorkout(data) as Workout;
   },
 
   getWorkoutsByWeek: async (weekNumber: number): Promise<Workout[]> => {
     const { data } = await api.get(`/api/workouts/week/${weekNumber}`);
-    return data;
+    // Handle both array and object with workouts property
+    const workouts = Array.isArray(data) ? data : (data?.workouts || []);
+    return workouts.map((w: any) => normalizeWorkout(w)).filter((w: Workout | null): w is Workout => w !== null);
   },
 
   getTodayWorkout: async (): Promise<Workout | null> => {
     const { data } = await api.get('/api/workouts/today');
-    return data;
+    // Handle both response structures
+    if (data.workout !== undefined) {
+      // Wrapper structure: { message, workout, nextWorkout }
+      return normalizeWorkout(data.workout);
+    }
+    // Direct workout object
+    return normalizeWorkout(data);
   },
 
   completeWorkout: async (
@@ -135,12 +145,12 @@ export const workoutsApi = {
     const { data} = await api.patch(`/api/workouts/${id}/complete`, {
       activityId,
     });
-    return data;
+    return normalizeWorkout(data) as Workout;
   },
 
   uncompleteWorkout: async (id: string): Promise<Workout> => {
     const { data } = await api.patch(`/api/workouts/${id}/uncomplete`);
-    return data;
+    return normalizeWorkout(data) as Workout;
   },
 };
 
@@ -175,5 +185,23 @@ export const stravaApi = {
     return data;
   },
 };
+
+// Helper to normalize workout response
+function normalizeWorkout(workout: any): Workout | null {
+  if (!workout) return null;
+  return {
+    ...workout,
+    // Ensure dates are Date objects
+    scheduledDate: new Date(workout.scheduledDate),
+    completedAt: workout.completedAt ? new Date(workout.completedAt) : null,
+    createdAt: new Date(workout.createdAt),
+    updatedAt: new Date(workout.updatedAt),
+  };
+}
+
+// Helper to check if workout is completed
+export function isWorkoutCompleted(workout: Workout): boolean {
+  return workout.completedAt !== null && workout.completedAt !== undefined;
+}
 
 export default api;
